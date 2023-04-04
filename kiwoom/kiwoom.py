@@ -12,6 +12,8 @@ class Kiwoom(QAxWidget):
         #초기값
         ################ eventloop 모음###################
         self.login_event_loop = None
+        self.detail_account_info_eventLoop = None  # 키움 서버에 요청1 / 예수금
+        self.detail_account_info_eventLoop_2 = None  # 키움 서버에 요청2 / 계좌평가 잔고내역
         ##################################################
 
         # 변수 모음
@@ -19,11 +21,9 @@ class Kiwoom(QAxWidget):
         self.account_num = None
         ####################
 
-        ####### 이벤트 루프 모음
-        self.detail_account_info_eventLoop = None   # 키움 서버에 요청1 / 예수금
-        self.detail_account_info_eventLoop2 = None  # 키움 서버에 요청2 / 계좌평가 잔고내역
-        ####################################
-
+        # 계좌관련변수
+        self.use_money=0
+        self.use_money_percent = 0.5
 
         self.get_ocx_instance()
         self.event_slots()
@@ -32,6 +32,9 @@ class Kiwoom(QAxWidget):
         self.get_account_info()
         self.detail_account_info()  # 예수금 가져오기
         self.detail_account_myStock()  # 계좌평가잔고내역 가져오기
+
+
+
 
 
     def get_ocx_instance(self):
@@ -48,8 +51,6 @@ class Kiwoom(QAxWidget):
         self.dynamicCall("CommConnect()")    # PyQt5에서 제공하는 함수 / 데이터 전송 하는 역할
 
         self.login_event_loop = QEventLoop()    # 이벤트 루프 클래스
-
-
         self.login_event_loop.exec_()   #  다음 코드 실행 안되게기
 
 
@@ -97,10 +98,9 @@ class Kiwoom(QAxWidget):
         self.dynamicCall("SetInputValue(String, String)", "조회구분", "2")
         self.dynamicCall("CommRqData(String, String, int, String)", "계좌평가잔고내역요청", "opw00018", sPrevNext, "2000")
                                                             # ("내가 지은 요청이름", "TR번호", "preNext", "화면번호")
-        print("test")
 
-        self.detail_account_info_eventLoop2 = QEventLoop()    # 서버에 데이터 요청 이후 반드시 이벤트루프 걸어줘야함
-        self.detail_account_info_eventLoop2.exec_()
+        self.detail_account_info_eventLoop_2 = QEventLoop()    # 서버에 데이터 요청 이후 반드시 이벤트루프 걸어줘야함
+        self.detail_account_info_eventLoop_2.exec_()
 
 
 
@@ -128,6 +128,11 @@ class Kiwoom(QAxWidget):
             # OnReceiveTRData() 이벤트가 발생될때 수신한 데이터를 얻어오는 함수
             # 이 함수는 OnReceiveTrData()이벤트가 발생될때 그 안에서 사용해야 합니다.
 
+
+            # self.use_money = int(deposit) * self.use_money_percent
+            # self.use_money = self.use_money / 4
+
+
             print("예수금                 : %s 원" % int(deposit))
             print("주문가능금액            : %s 원" % int(orderAmount))
             print("출금가능금액            : %s 원" % int(withdraw))
@@ -136,17 +141,20 @@ class Kiwoom(QAxWidget):
             self.detail_account_info_eventLoop.exit()
             # 출력 다 하고 루프 탈출 => 다음 코드 실행
 
-        if sRQName == "계좌평가잔고내역요쳥":
-            print("test1")
+        if sRQName == "계좌평가잔고내역요청":
             totalPurchase = self.dynamicCall("GetCommData(String, String, int, String)", sTrCode, sRQName, 0, "총매입금액")
             totalReturn = self.dynamicCall("GetCommData(String, String, int, String)", sTrCode, sRQName, 0, "총수익률(%)")
-
-
 
             print("총매입금액    : %s 원" % int(totalPurchase))
             print("총수익률      : %s 원" % float(totalReturn))
 
-            self.detail_account_info_eventLoop2.exit()
+            # 보유계좌 종목 가져오기
+            rows = self.dynamicCall("GetRepeatCnt(QString, QString)", sTrCode, sRQName)
+            cnt = 0
+            for i in range(rows):
+                code = self.dynamicCall("GetCommData(QString, QString, int, QString", sTrCode, sRQName,cnt,"종목번호")
+
+            self.detail_account_info_eventLoop_2.exit()
 
 
 
