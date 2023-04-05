@@ -19,11 +19,18 @@ class Kiwoom(QAxWidget):
         # 변수 모음
         #################################
         self.account_num = None
+        self.account_stock_dict = {}   # 보유 종목이 담겨 있는 딕셔너리
         ####################
 
         # 계좌관련변수
         self.use_money=0
         self.use_money_percent = 0.5
+        ###############
+
+
+
+
+
 
         self.get_ocx_instance()
         self.event_slots()
@@ -106,8 +113,7 @@ class Kiwoom(QAxWidget):
 
 
 
-
-
+    # 보유 종목이 20개 넘을 경우 sPrevNext = 2로 출력됨
     def trData_slot(self, sScrNo ,sRQName, sTrCode, sRecordName, sPrevNext ):  # 데이터 처리화면 출력
         '''
         TR요청을 받는 구역이다 / 슬롯
@@ -129,14 +135,14 @@ class Kiwoom(QAxWidget):
             # 이 함수는 OnReceiveTrData()이벤트가 발생될때 그 안에서 사용해야 합니다.
 
 
-            # self.use_money = int(deposit) * self.use_money_percent
-            # self.use_money = self.use_money / 4
+            self.use_money = int(deposit) * self.use_money_percent   # 예수금의 50퍼센트 사용
+            self.use_money = self.use_money / 4  # 예수금 50퍼센트를 다시 4등분 해서 사용
 
 
             print("예수금                 : %s 원" % int(deposit))
             print("주문가능금액            : %s 원" % int(orderAmount))
             print("출금가능금액            : %s 원" % int(withdraw))
-            print("최소주문가능금액        : %s 원" % int(minOrder))
+            print("최소주문가능금액         : %s 원" % int(minOrder))
 
             self.detail_account_info_eventLoop.exit()
             # 출력 다 하고 루프 탈출 => 다음 코드 실행
@@ -146,15 +152,60 @@ class Kiwoom(QAxWidget):
             totalReturn = self.dynamicCall("GetCommData(String, String, int, String)", sTrCode, sRQName, 0, "총수익률(%)")
 
             print("총매입금액    : %s 원" % int(totalPurchase))
-            print("총수익률      : %s 원" % float(totalReturn))
+            print("총수익률      : %s %%" % float(totalReturn))
 
-            # 보유계좌 종목 가져오기
-            rows = self.dynamicCall("GetRepeatCnt(QString, QString)", sTrCode, sRQName)
+            # 보유 계좌 종목 가져 오기
+            # getRepeatCnt == 멀티 데이터 조회 용도
+            rows = self.dynamicCall("GetRepeatCnt(QString, QString)", sTrCode, sRQName)  # 보유 종목의 개수 가져 오기
             cnt = 0
-            for i in range(rows):
-                code = self.dynamicCall("GetCommData(QString, QString, int, QString", sTrCode, sRQName,cnt,"종목번호")
+            for i in range(rows): # 보유 종목의 개수 만큼 반복
+                code = self.dynamicCall("GetCommData(QString, QString, int, QString", sTrCode, sRQName, i,"종목번호")
+                code = code.strip()[1:]   # 종목코드 맨 앞자리 알파벳 제거
 
-            self.detail_account_info_eventLoop_2.exit()
+
+                code_name = self.dynamicCall("GetCommData(QString, QString, int, QString", sTrCode, sRQName, i, "종목명")
+                stock_quantity = self.dynamicCall("GetCommData(QString, QString, int, QString", sTrCode, sRQName, i, "보유수량")
+                purchase_price  = self.dynamicCall("GetCommData(QString, QString, int, QString", sTrCode, sRQName, i, "매입가")
+                learn_rate = self.dynamicCall("GetCommData(QString, QString, int, QString", sTrCode, sRQName,i,"수익률(%)")
+                current_price = self.dynamicCall("GetCommData(QString, QString, int, QString", sTrCode, sRQName,i,"현재가")
+                purchase_amount  = self.dynamicCall("GetCommData(QString, QString, int, QString", sTrCode, sRQName,i,"매입금액")
+                possible_quantity = self.dynamicCall("GetCommData(QString, QString, int, QString", sTrCode, sRQName,i,"매매가능수량")
+
+                if code in self.account_stock_dict:  #
+                    pass
+                else:
+                    self.account_stock_dict.update({code: {}})
+
+
+                # 출력 포맷팅 / 양 쪽 공백 제거
+                code_name = code_name.strip()
+                stock_quantity = int(stock_quantity.strip())
+                purchase_price = int(purchase_price.strip())
+                learn_rate = float(learn_rate.strip())  # 수익률은 퍼센트로 출력
+                current_price = int(current_price.strip())
+                purchase_amount = int(purchase_amount.strip())
+                possible_quantity = int(possible_quantity.strip())
+
+                self.account_stock_dict[code].update({"종목명":code_name})
+                self.account_stock_dict[code].update({"보유수량":stock_quantity})
+                self.account_stock_dict[code].update({"매입가":purchase_price})
+                self.account_stock_dict[code].update({"수익률(%)":learn_rate})
+                self.account_stock_dict[code].update({"현재가": current_price})
+                self.account_stock_dict[code].update({"매입금액":purchase_amount})
+                self.account_stock_dict[code].update({"매매가능수량": possible_quantity})
+
+                cnt +=1
+
+                print("{}".format(self.account_stock_dict[code]))
+
+            print("현재 보유 종목 개수", cnt)
+
+            # 종목 내역 20개 초과시 다음 페이지 넘어 가기
+            if sPrevNext == "2":
+                self.detail_account_myStock(sPrevNext="2")
+            # 아닐 경우 루프 탈출
+            else:
+                self.detail_account_info_eventLoop_2.exit()
 
 
 
