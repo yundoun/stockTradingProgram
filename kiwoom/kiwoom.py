@@ -12,14 +12,19 @@ class Kiwoom(QAxWidget):
         #초기값
         ################ eventloop 모음###################
         self.login_event_loop = None
-        self.detail_account_info_eventLoop = None  # 키움 서버에 요청1 / 예수금
-        self.detail_account_info_eventLoop_2 = QEventLoop()  # 키움 서버에 요청2 / 계좌평가 잔고내역
+        self.detail_account_info_eventLoop = QEventLoop()  # 키움 서버에 요청 / 예수금, 계좌평가 잔고내역 요청
         ##################################################
+
+        ##### 스크린 번호 모음
+        self.screen_my_info = "2000"
+
+
 
         # 변수 모음
         #################################
         self.account_num = None
         self.account_stock_dict = {}   # 보유 종목이 담겨 있는 딕셔너리
+        self.not_account_stock_dict = {}  # 미체결 종목이 담겨 있는 딕셔너리
         ####################
 
         # 계좌관련변수
@@ -37,8 +42,9 @@ class Kiwoom(QAxWidget):
 
         self.signal_login_commConnect()
         self.get_account_info()
-        self.detail_account_info()  # 예수금 가져오기
-        self.detail_account_myStock()  # 계좌평가잔고내역 가져오기
+        self.detail_account_info()  # 예수금 요청
+        self.detail_account_myStock()  # 계좌평가잔고내역 요청
+        self.not_concluded_account()  # 미체결 요청
 
 
 
@@ -83,13 +89,13 @@ class Kiwoom(QAxWidget):
 
 
     def detail_account_info(self):    #키움 서버에 요청 1
-        print("예수금을 요청")
+        print("예수금 요청")
 
         self.dynamicCall("SetInputValue(String, String)", "계좌번호", self.account_num)
         self.dynamicCall("SetInputValue(String, String)", "비밀번호", "0000")
         self.dynamicCall("SetInputValue(String, String)", "비밀번호입력매체구분", "00")
         self.dynamicCall("SetInputValue(String, String)", "조회구분", "2")
-        self.dynamicCall("CommRqData(String, String, int, String)", "예수금상세현황요청","opw00001", 0,"2000")
+        self.dynamicCall("CommRqData(String, String, int, String)", "예수금상세현황요청","opw00001", 0,"screen_my_info")
                                                         # ("내가 지은 요청이름", "TR번호", "preNext", "화면번호")
 
         self.detail_account_info_eventLoop = QEventLoop()  # 요청 후 이벤트 루프 실행
@@ -103,12 +109,25 @@ class Kiwoom(QAxWidget):
         self.dynamicCall("SetInputValue(String, String)", "비밀번호", "0000")
         self.dynamicCall("SetInputValue(String, String)", "비밀번호입력매체구분", "00")
         self.dynamicCall("SetInputValue(String, String)", "조회구분", "2")
-        self.dynamicCall("CommRqData(String, String, int, String)", "계좌평가잔고내역요청", "opw00018", sPrevNext, "2000")
+        self.dynamicCall("CommRqData(String, String, int, String)", "계좌평가잔고내역요청", "opw00018", sPrevNext, self.screen_my_info)
                                                             # ("내가 지은 요청이름", "TR번호", "preNext", "화면번호")
 
-        self.detail_account_info_eventLoop_2.exec_()
+        self.detail_account_info_eventLoop.exec_()
+
+    def not_concluded_account(self, sPrevNext = "0"):
+        print("미체결 요청")
+        self.dynamicCall("SetInputValue(QString, QString)", "계좌번호", self.account_num)
+        self.dynamicCall("SetInputValue(QString, QString)", "전체종목구분", "1")
+        self.dynamicCall("SetInputValue(QString, QString)", "매매구분", "0")
+
+        # 이거 빼도 될려나 ?
+        self.dynamicCall("SetInputValue(QString, QString)", "종목코드", "0")
+        self.dynamicCall("SetInputValue(QString, QString)", "체결구분", "1")
+        self.dynamicCall("CommRqData(String, String, int, String)", "미체결요청", "opt10075", sPrevNext, self.screen_my_info)
 
 
+        self.detail_account_info_eventLoop.exec_()
+        # 이벤트 루프를 실행 시켜야 요청이 끝날 때 까지 블락 기능 활성화 / 다음 코드 안넘어가게
 
 
 
@@ -176,6 +195,7 @@ class Kiwoom(QAxWidget):
                     self.account_stock_dict.update({code: {}})
 
 
+
                 # 출력 포맷팅 / 양 쪽 공백 제거
                 code_name = code_name.strip()
                 stock_quantity = int(stock_quantity.strip())
@@ -204,16 +224,59 @@ class Kiwoom(QAxWidget):
                 self.detail_account_myStock(sPrevNext="2")
             # 아닐 경우 루프 탈출
             else:
-                self.detail_account_info_eventLoop_2.exit()
+                self.detail_account_info_eventLoop.exit()
 
 
 
+        elif sRQName == "미체결요청":
+            rows = self.dynamicCall("GetRepeatCnt(QString, QString)", sTrCode, sRQName)
+
+            if rows == 0:
+                print("미체결된 종목이 존재하지 않습니다.")
+
+            for i in range(rows):
+                code = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "종목코드")
+                code_nm = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "종목명")
+                order_number = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "주문번호")
+                order_status = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "주문상태") # 접수, 확인, 체결
+                order_quantity = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "주문수량")
+                order_price = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "주문가격")
+                order_divide = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "주문구분") # 매도, 매수, 정정, 취소
+                not_quantity = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "미체결수량")
+                ok_quantity = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "체결량")
 
 
+                code = code.strip()
+                code_nm = code_nm.strip()
+                order_number = int(order_number.strip)()
+                order_status = order_status.strip()
+                order_quantity = int(order_quantity.strip())
+                order_price = int(order_price.strip())
+                order_divide = order_divide.strip().lstrip('+').lstrip('-')
+                not_quantity = int(not_quantity.strip())
+                ok_quantity = int(ok_quantity.strip())
+
+                if order_number in self.not_account_stock_dict:
+                    pass
+
+                else:
+                    self.not_account_stock_dict[order_number] = {}
 
 
+                self.not_account_stock_dict[order_number].update({"종목코드": code})
+                self.not_account_stock_dict[order_number].update({"종목명": code_nm})
+                self.not_account_stock_dict[order_number].update({"주문번호": order_number})
+                self.not_account_stock_dict[order_number].update({"주문상태": order_status})
+                self.not_account_stock_dict[order_number].update({"주문수량": order_quantity})
+                self.not_account_stock_dict[order_number].update({"주문가격": order_price})
+                self.not_account_stock_dict[order_number].update({"주문구분": order_divide})
+                self.not_account_stock_dict[order_number].update({"미체결수량": not_quantity})
+                self.not_account_stock_dict[order_number].update({"체결량": ok_quantity})
 
 
+                print("미체결 종목  : %s" % self.not_account_stock_dict[order_number])
+
+            self.detail_account_info_eventLoop.exit()
 
 
 
