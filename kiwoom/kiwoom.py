@@ -13,7 +13,7 @@ class Kiwoom(QAxWidget):
         ################ eventloop 모음###################
         self.login_event_loop = None
         self.detail_account_info_eventLoop = None  # 키움 서버에 요청1 / 예수금
-        self.detail_account_info_eventLoop_2 = None  # 키움 서버에 요청2 / 계좌평가 잔고내역
+        self.detail_account_info_eventLoop_2 = QEventLoop()  # 키움 서버에 요청2 / 계좌평가 잔고내역
         ##################################################
 
         # 변수 모음
@@ -106,7 +106,6 @@ class Kiwoom(QAxWidget):
         self.dynamicCall("CommRqData(String, String, int, String)", "계좌평가잔고내역요청", "opw00018", sPrevNext, "2000")
                                                             # ("내가 지은 요청이름", "TR번호", "preNext", "화면번호")
 
-        self.detail_account_info_eventLoop_2 = QEventLoop()    # 서버에 데이터 요청 이후 반드시 이벤트루프 걸어줘야함
         self.detail_account_info_eventLoop_2.exec_()
 
 
