@@ -17,7 +17,7 @@ class Kiwoom(QAxWidget):
 
         ##### 스크린 번호 모음
         self.screen_my_info = "2000"
-
+        self.screen_calculation_stock = "4000"
 
 
         # 변수 모음
@@ -46,7 +46,7 @@ class Kiwoom(QAxWidget):
         self.detail_account_myStock()  # 계좌평가잔고내역 요청
         self.not_concluded_account()  # 미체결 요청
 
-
+        self.calculator_fnc()   # 종목 분석용, 임시용으로 실행
 
 
 
@@ -277,6 +277,80 @@ class Kiwoom(QAxWidget):
                 print("미체결 종목  : %s" % self.not_account_stock_dict[order_number])
 
             self.detail_account_info_eventLoop.exit()
+
+        elif "주식일봉차트조회" == sRQName:
+            print("일봉데이터 요청")
+
+
+
+    def get_code_list_by_market(self, market_code):
+        '''
+        종목 코드들 반환
+        :param self:
+        :param market_code:
+        :return:
+        '''
+        code_list = self.dynamicCall("GetCodeListByMarket(QString)", market_code)
+        code_list = code_list.split(";")[:-1] # 마지막껀 삭제
+        # 종목코드 11111;11111;11111;1111; 이런식으로 나옴 그래서-> ["1111111", "111111",111111"] 자르기
+        return code_list
+
+    # tr요청을 빠르게 할경우 끊김 그래서 3.6초 정도 딜레이가 있어야함
+    def calculator_fnc(self):
+        '''
+        종목 분석 실행용 함수
+        :return:
+        '''
+        code_list = self.get_code_list_by_market("10")
+        print("코스닥 종목 총 개수 : %s" % len(code_list))
+
+        # 스크린 번호 요청을 하면 그룹이 만들어지고 그 스크린번호가 쌓이면 안되니까 끊어줬다
+        # 스크린 번호도 200개 까지 밖에 못만드니까 끊어주는 것이 좋다
+        for idx, code in enumerate(code_list): # enumerate ==> 인덱스랑 데이터값 같이 줌
+            self.dynamicCall("DisconnectRealData(QString)", self.screen_calculation_stock)
+            print("%s / %s : KOSDAQ Stock code : %s is updating..." % (idx+1, len(code_list), code))
+            self.day_kiwoom_db(code=code)
+
+    def day_kiwoom_db(self, code=None, date = None, sPrevNext ="0"):
+        '''
+        일봉데이터TR 받아오기
+        (스크린번호 요청)
+        :param self: 
+        :param code: 
+        :param date: 
+        :param sPrevNext: 
+        :return: 
+        '''
+        self.dynamicCall("SetInputValue(QString, QString)", "종목코드", code)
+        self.dynamicCall("SetInputValue(QString, QString)", "수정주가구분","1")
+        # 수정주가구분 : 주가의 최종적인 수정 가격이 반영된 형태  ex) 액면분할
+        # 0: 반영되기 전 1: 반영된 후
+
+        if date != None:  # 오늘 날짜로 할 경우 데이터 입력 안해도 됨
+            self.dynamicCall("SetInputValue(QString, QString", "기준일자", date)
+
+        self.dynamicCall("CommRqData(QString, QString, int, QString)", "주식일봉차트조회", "opt10081", sPrevNext, self.screen_calculation_stock)
+        # Tr 서버로 전송 - Transaction
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
