@@ -339,7 +339,28 @@ class Kiwoom(QAxWidget):
             else:
                 print("종목코드 %s의 일봉데이터의 총 개수는 %s개 입니다." % (code, dailyChart_SUM))
                 dailyChart_SUM = 0
-                
+
+                print("총 수 %s", len(self.calcul_data))
+
+                pass_success = False
+
+                # 120일 이평선을 그릴만큼 데이터가 있는지 체크
+                if self.calcul_data == None or len(self.calcul_data) < 120:
+                    pass_success = False
+
+                else:
+                    #120일 이상이 될 경우
+                    total_price = 0
+                    for value in self.calcul_data[:120]: # 오늘부터 120일전까지
+                        total_price += int(value[1]) # 120일 간 종가를 모두 더한 것
+
+                    moving_average_price = total_price / 120
+                    # 120 이동평균선 평균의 가격
+
+                    
+
+
+
                 self.calculator_event_loop.exit()
 
 
