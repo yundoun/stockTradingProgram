@@ -3,6 +3,11 @@
 from PyQt5.QAxContainer import *
 from PyQt5.QtCore import *
 from config.errorCode import *
+from PyQt5.QtTest import *
+
+global dailyChart_SUM
+dailyChart_SUM = 0
+# 각 종목별 일봉데이터개수 총합
 
 class Kiwoom(QAxWidget):
     def __init__(self):
@@ -13,6 +18,7 @@ class Kiwoom(QAxWidget):
         ################ eventloop 모음###################
         self.login_event_loop = None
         self.detail_account_info_eventLoop = QEventLoop()  # 키움 서버에 요청 / 예수금, 계좌평가 잔고내역 요청
+        self.calculator_event_loop= QEventLoop()
         ##################################################
 
         ##### 스크린 번호 모음
@@ -25,6 +31,8 @@ class Kiwoom(QAxWidget):
         self.account_num = None
         self.account_stock_dict = {}   # 보유 종목이 담겨 있는 딕셔너리
         self.not_account_stock_dict = {}  # 미체결 종목이 담겨 있는 딕셔너리
+
+
         ####################
 
         # 계좌관련변수
@@ -142,6 +150,7 @@ class Kiwoom(QAxWidget):
         :param sPrevNext: 다음 페이지가 있는지 확인
         :return:
         '''
+
 
         if sRQName == "예수금상세현황요청":   # tr데이터 요청값 필터링하여 출력 / 요청 값은 "예수금상세현황요청"
             deposit = self.dynamicCall("GetCommData(String, String, int, String)", sTrCode, sRQName, 0, "예수금")
@@ -280,6 +289,27 @@ class Kiwoom(QAxWidget):
 
         elif "주식일봉차트조회" == sRQName:
             print("일봉데이터 요청")
+            # 종목 코드를 알아야겠지?
+            
+            code = self.dynamicCall("GetCommData(QString, QString, int, QString",sTrCode, sRQName, 0, "종목코드")
+            code = code.strip()
+            print("%s 일봉데이터 요청" % code)
+
+            rows = self.dynamicCall("GetRepeatCnt(QString, QString)", sTrCode, sRQName)
+            print("현재 %s개의 일봉데이터를 가져왔습니다." % rows)
+            # GetRepaetCnt 는 차트 확대하는 버튼이랑 같다고 보면됨(?)
+
+            global dailyChart_SUM
+            dailyChart_SUM += rows
+
+            if sPrevNext == "2":
+                self.day_kiwoom_db(code=code, sPrevNext=sPrevNext)
+            else:
+                print("종목코드 %s의 일봉데이터의 총 개수는 %s개 입니다." % (code, dailyChart_SUM))
+                dailyChart_SUM = 0
+                self.calculator_event_loop.exit()
+
+
 
 
 
@@ -311,7 +341,7 @@ class Kiwoom(QAxWidget):
             print("%s / %s : KOSDAQ Stock code : %s is updating..." % (idx+1, len(code_list), code))
             self.day_kiwoom_db(code=code)
 
-    def day_kiwoom_db(self, code=None, date = None, sPrevNext ="0"):
+    def day_kiwoom_db(self, code=None, date=None, sPrevNext ="0"):
         '''
         일봉데이터TR 받아오기
         (스크린번호 요청)
@@ -321,6 +351,11 @@ class Kiwoom(QAxWidget):
         :param sPrevNext: 
         :return: 
         '''
+
+        # 프로세스 과정이 멈추면 안된다. 이벤트 루프 자체가 살아있어야함
+        # 이 이벤트에 대한 네트워크적 프로세스를 하위 코드가 실행되기까지 딜레이를 준다.
+        QTest.qWait(3600)
+
         self.dynamicCall("SetInputValue(QString, QString)", "종목코드", code)
         self.dynamicCall("SetInputValue(QString, QString)", "수정주가구분","1")
         # 수정주가구분 : 주가의 최종적인 수정 가격이 반영된 형태  ex) 액면분할
@@ -332,8 +367,8 @@ class Kiwoom(QAxWidget):
         self.dynamicCall("CommRqData(QString, QString, int, QString)", "주식일봉차트조회", "opt10081", sPrevNext, self.screen_calculation_stock)
         # Tr 서버로 전송 - Transaction
 
-
-
+        self.calculator_event_loop.exec_()
+        # 한 종목씩 완료하고 넘어가게 이벤트 루프 달아주기
 
 
 
