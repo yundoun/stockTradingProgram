@@ -39,7 +39,9 @@ class Kiwoom(QAxWidget):
         self.use_money=0
         self.use_money_percent = 0.5
         ###############
-
+        # 종목 분석용 전역변수
+        self.calcul_data = []
+        #########################
 
 
 
@@ -295,18 +297,49 @@ class Kiwoom(QAxWidget):
             code = code.strip()
             print("%s 일봉데이터 요청" % code)
 
-            rows = self.dynamicCall("GetRepeatCnt(QString, QString)", sTrCode, sRQName)
-            print("현재 %s개의 일봉데이터를 가져왔습니다." % rows)
+            cnt = self.dynamicCall("GetRepeatCnt(QString, QString)", sTrCode, sRQName)
+            print("현재 %s일의 일봉데이터를 가져왔습니다." % cnt)
             # GetRepaetCnt 는 차트 확대하는 버튼이랑 같다고 보면됨(?)
 
+            # 한 번 조회하면 600일치까지의 일봉데이터를 받을 수 있다.
+            # 시간이 많이 걸리기 때문에 원하는 종목만 선택해서 하는 것이 좋다.
+            for i in range(cnt):
+                data = []
+                # data = self.dynamicCall("GetCommData(QString, QString)", sTrCode, sRQName)
+                # [['', '현재가', '거래량', '거래대금', '날짜', '시가', '고가', '저가', '']]
+
+                current_price = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "현재가")
+                value = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "거래량")
+                trading_value = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "거래대금")
+                date = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "일자")
+                start_price = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "시가")
+                high_price = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "고가")
+                low_price = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "저가")
+
+                data.append("")
+                data.append(current_price.strip())
+                data.append(value.strip())
+                data.append(trading_value.strip())
+                data.append(date.strip())
+                data.append(start_price.strip())
+                data.append(high_price.strip())
+                data.append(low_price.strip())
+                data.append("")
+
+                self.calcul_data.append(data.copy())
+                # calcul_data : for문을 돌려서 나온 데이터를 전역변수 리스트에 저장
+
+            print(len(self.calcul_data))
+
             global dailyChart_SUM
-            dailyChart_SUM += rows
+            dailyChart_SUM += cnt
 
             if sPrevNext == "2":
                 self.day_kiwoom_db(code=code, sPrevNext=sPrevNext)
             else:
                 print("종목코드 %s의 일봉데이터의 총 개수는 %s개 입니다." % (code, dailyChart_SUM))
                 dailyChart_SUM = 0
+                
                 self.calculator_event_loop.exit()
 
 
