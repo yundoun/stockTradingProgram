@@ -1,9 +1,11 @@
 # 키움 증권
+import os
 
 from PyQt5.QAxContainer import *
 from PyQt5.QtCore import *
 from config.errorCode import *
 from PyQt5.QtTest import *
+
 
 global dailyChart_SUM
 dailyChart_SUM = 0
@@ -31,7 +33,7 @@ class Kiwoom(QAxWidget):
         self.account_num = None
         self.account_stock_dict = {}   # 보유 종목이 담겨 있는 딕셔너리
         self.not_account_stock_dict = {}  # 미체결 종목이 담겨 있는 딕셔너리
-
+        self.portfolio_stock_dict = {}
 
         ####################
 
@@ -56,7 +58,8 @@ class Kiwoom(QAxWidget):
         self.detail_account_myStock()  # 계좌평가잔고내역 요청
         self.not_concluded_account()  # 미체결 요청
 
-        self.calculator_fnc()   # 종목 분석용, 임시용으로 실행
+        #self.calculator_fnc()   # 종목 분석용, 임시용으로 실행
+        self.read_code() # 저장된 종목들 불러오기
 
 
 
@@ -292,7 +295,7 @@ class Kiwoom(QAxWidget):
         elif "주식일봉차트조회" == sRQName:
             print("일봉데이터 요청")
             # 종목 코드를 알아야겠지?
-            
+
             code = self.dynamicCall("GetCommData(QString, QString, int, QString",sTrCode, sRQName, 0, "종목코드")
             code = code.strip()
             print("%s 일봉데이터 요청" % code)
@@ -492,14 +495,28 @@ class Kiwoom(QAxWidget):
         # 한 종목씩 완료하고 넘어가게 이벤트 루프 달아주기
 
 
+    def read_code(self):
+        if os.path.exists("files/condition_stock.txt"): # 운영체제의 경로에 이러한 파일이 존재하느냐 확인, 있으면 True
+            f = open("files/condition_stock.txt", "r", encoding="utf8") # 파일열기
+
+            lines = f.readlines()
+            idx = 0
+            for line in lines:
+                if line != "":
+                    ls = lines[idx].split("\t")
 
 
+                    stock_code = ls[0]
+                    stock_name = ls[1]
+                    stock_price = int(ls[2].split("\n")[0])
+                    stock_price = abs(stock_price)
 
+                    self.portfolio_stock_dict.update({stock_code:{"종목명":stock_name, "현재가":stock_price}})
+                    # ex) {"2090923":{"종목명","삼성", "현재가",:100000}
+                    idx += 1
+            f.close()
 
-
-
-
-
+            print(self.portfolio_stock_dict)
 
 
 
