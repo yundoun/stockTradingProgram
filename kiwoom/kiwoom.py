@@ -518,8 +518,11 @@ class Kiwoom(QAxWidget):
                     idx += 1
             f.close()
 
+            print("그린밸의 1 매수법칙에 부합하는 종목은 다음과 같습니다.")
+            print("=============================================")
             for key, value in self.portfolio_stock_dict.items():
                 print(key, value)
+            print("=============================================")
 
     def screen_number_setting(self):
 
