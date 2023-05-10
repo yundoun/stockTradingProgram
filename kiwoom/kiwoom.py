@@ -5,7 +5,7 @@ from PyQt5.QAxContainer import *
 from PyQt5.QtCore import *
 from config.errorCode import *
 from PyQt5.QtTest import *
-
+from config.kiwoonType import *
 
 global dailyChart_SUM
 dailyChart_SUM = 0
@@ -15,6 +15,8 @@ class Kiwoom(QAxWidget):
     def __init__(self):
         super().__init__()
         print("kiwoom 클래스 입니다.")
+
+        self.realType = RealType()
 
         #초기값
         ################ eventloop 모음###################
@@ -28,7 +30,7 @@ class Kiwoom(QAxWidget):
         self.screen_calculation_stock = "4000"
         self.screen_number_sock = "5000" # 종목별로 할당할 스크린 번호
         self.screen_number_trading = "6000" # 주문별 할당할 스크린 번호
-
+        self.screen_start_stop_real = "1000"
 
         # 변수 모음
         #################################
@@ -47,12 +49,14 @@ class Kiwoom(QAxWidget):
         self.calcul_data = []
         #########################
 
-
+        ########## 실시간 데이터############################
+        #self.real_event_slots()
 
 
 
         self.get_ocx_instance()
         self.event_slots()
+
 
         self.signal_login_commConnect()
         self.get_account_info()
@@ -64,6 +68,14 @@ class Kiwoom(QAxWidget):
         self.read_code() # 저장된 종목들 불러오기
         self.screen_number_setting() # 스크린번호 할당
 
+        # 실시간 데이터 수신 : 장 시작 시간, 장 종료 시각 등
+        self.dynamicCall("SetRealReg(QString, QString, QString, QString)", self.screen_start_stop_real, '', self.realType.REALTYPE['장시작시간']['장운영구분'],"0")
+
+        for code in self.portfolio_stock_dict.keys():
+            screen_num = self.portfolio_stock_dict[code]['스크린번호']
+            fids = self.realType.REALTYPE['주식체결']['체결시간']
+            self.dynamicCall("SetRealReg(QString, QString, QString, QString)", screen_num, code, fids, "1")
+            print("실시간 등록 코드 : %s, 스크린번호 : %s, fid번호 %s" % (code, screen_num,fids))
 
     def get_ocx_instance(self):
         self.setControl("KHOPENAPI.KHOpenAPICtrl.1")               # 응용프로그램 제어
@@ -73,6 +85,10 @@ class Kiwoom(QAxWidget):
         self.OnEventConnect.connect(self.login_slot)
         self.OnReceiveTrData.connect(self.trData_slot)
         # TR요청을 받는 slot
+
+
+    def real_event_slots(self):
+        self.OnReceiveRealData.connect(self.realdata_slot)
 
 
     def signal_login_commConnect(self):     # 로그인 시도하는 함수
@@ -572,6 +588,30 @@ class Kiwoom(QAxWidget):
 
         for key, value in self.portfolio_stock_dict.items():
             print(key, value)
+
+    def real_event_slots(self, sCode, sRealType, sRealData):
+        '''
+
+        :param sCode: 종목코드
+        :param sRealType: 실시간 타입
+        :param sRealData: 실시간 데이터
+        :return:
+        '''
+        if sRealType == "장시작시간":
+            fid = self.realType.REALTYPE[sRealType]['장운영구분']
+            value = self.dynamicCall("GetCommRealData(QString, int)", sCode, fid)
+
+            if value == '0':
+                print("장 시작 전 입니다.")
+            elif value == '3':
+                print("장 시작했습니다.")
+            elif value == "2":
+                print("장 종료, 동시 호가로 넘어감")
+            elif value == "4":
+                print("장이 종료 되었습니다.")
+        elif sRealType == "주식체결":
+            print(sCode)
+
 
 
 
