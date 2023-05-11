@@ -49,13 +49,11 @@ class Kiwoom(QAxWidget):
         self.calcul_data = []
         #########################
 
-        ########## 실시간 데이터############################
-        #self.real_event_slots()
-
-
-
         self.get_ocx_instance()
         self.event_slots()
+
+        ########## 실시간 데이터############################
+        self.real_event_slots()
 
 
         self.signal_login_commConnect()
@@ -589,7 +587,7 @@ class Kiwoom(QAxWidget):
         for key, value in self.portfolio_stock_dict.items():
             print(key, value)
 
-    def real_event_slots(self, sCode, sRealType, sRealData):
+    def realdata_slot(self, sCode, sRealType, sRealData):
         '''
 
         :param sCode: 종목코드
