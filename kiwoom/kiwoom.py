@@ -74,7 +74,7 @@ class Kiwoom(QAxWidget):
             fids = self.realType.REALTYPE['주식체결']['체결시간']
             self.dynamicCall("SetRealReg(QString, QString, QString, QString)", screen_num, code, fids, "1")
             print("실시간 등록 코드 : %s, 스크린번호 : %s, fid번호 %s" % (code, screen_num,fids))
-
+            # 실시간 등록 : SetRealReg
     def get_ocx_instance(self):
         self.setControl("KHOPENAPI.KHOpenAPICtrl.1")               # 응용프로그램 제어
 
@@ -610,9 +610,53 @@ class Kiwoom(QAxWidget):
         elif sRealType == "주식체결":
             print(sCode)
 
+            # 체결시간 얻어오기
+            a = self.dynamicCall("GetCommRealDate(QString, int)", sCode, self.realType.REALTYPE[sRealType]['체결시간'])
+            # HHMMSS
 
+            b = self.dynamicCall("GetCommRealDate(QString, int)", sCode, self.realType.REALTYPE[sRealType]['현재가'])
+            b = abs(int(b)) # +(-) 2500 음봉일 경우 마이너스로 나옴 # 주문시 가격은 양수로만 사용할거기 때문에
 
+            c = self.dynamicCall("GetCommRealDate(QString, int)", sCode, self.realType.REALTYPE[sRealType]['전일대비'])
+            c = abs(int(c)) # 출력 : +(-) 50
 
+            d = self.dynamicCall("GetCommRealDate(QString, int)", sCode, self.realType.REALTYPE[sRealType]['등락율'])
+            d = float(d) # 소수점 사용하기 위해
 
+            e = self.dynamicCall("GetCommRealDate(QString, int)", sCode, self.realType.REALTYPE[sRealType]['(최우선)매도호가'])
+            e = abs(int(e))
 
+            f = self.dynamicCall("GetCommRealDate(QString, int)", sCode, self.realType.REALTYPE[sRealType]['(최우선)매수호가'])
+            f = abs(int(f))
 
+            g = self.dynamicCall("GetCommRealDate(QString, int)", sCode, self.realType.REALTYPE[sRealType]['거래량'])
+            g = abs(int(g)) # 틱봉의 거래량
+
+            h = self.dynamicCall("GetCommRealDate(QString, int)", sCode, self.realType.REALTYPE[sRealType]['누적거래량'])
+            h = abs(int(h))
+
+            i = self.dynamicCall("GetCommRealDate(QString, int)", sCode, self.realType.REALTYPE[sRealType]['고가'])
+            i = abs(int(i))
+
+            j = self.dynamicCall("GetCommRealDate(QString, int)", sCode, self.realType.REALTYPE[sRealType]['시가'])
+            j = abs(int(j))
+
+            k = self.dynamicCall("GetCommRealDate(QString, int)", sCode, self.realType.REALTYPE[sRealType]['현재가'])
+            k = abs(int(k))
+
+            if sCode not in self.portfolio_stock_dict:
+                self.portfolio_stock_dict.update({sCode:{}})
+
+            self.portfolio_stock_dict[sCode].update({"체결시간": a})
+            self.portfolio_stock_dict[sCode].update({"현재가": b})
+            self.portfolio_stock_dict[sCode].update({"전일대비": c})
+            self.portfolio_stock_dict[sCode].update({"등락율": d})
+            self.portfolio_stock_dict[sCode].update({"(최우선)매도호가": e})
+            self.portfolio_stock_dict[sCode].update({"(최우선)매수호가": f})
+            self.portfolio_stock_dict[sCode].update({"거래량": g})
+            self.portfolio_stock_dict[sCode].update({"누적거래량": h})
+            self.portfolio_stock_dict[sCode].update({"고가": i})
+            self.portfolio_stock_dict[sCode].update({"시가": j})
+            self.portfolio_stock_dict[sCode].update({"저가": k})
+
+            print(self.portfolio_stock_dict[sCode])
