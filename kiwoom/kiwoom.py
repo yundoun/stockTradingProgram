@@ -38,7 +38,7 @@ class Kiwoom(QAxWidget):
         self.account_stock_dict = {}   # 보유 종목이 담겨 있는 딕셔너리
         self.not_account_stock_dict = {}  # 미체결 종목이 담겨 있는 딕셔너리
         self.portfolio_stock_dict = {}
-
+        self.jango_dict = {}
         ####################
 
         # 계좌관련변수
@@ -660,3 +660,47 @@ class Kiwoom(QAxWidget):
             self.portfolio_stock_dict[sCode].update({"저가": k})
 
             print(self.portfolio_stock_dict[sCode])
+
+            # 매수 결정 조건문
+            # 계좌잔고평가내역에 있고 (이전에 미리 매수한 종목) and 오늘 산거에서 없어야함
+            if sCode in self.account_stock_dict.keys() and sCode not in self.jango_dict.key():
+                print("%s %s" % ("신규 매도를 한다", sCode))
+
+            # 오늘 산 잔고에 있을 경우
+            elif sCode in self.jango_dict.keys():
+                print("%s %s" % ("신규 매도를 한다2", sCode))
+
+            # 등락율이 2.0% 이상이고 오늘 산 잔고에 없을 경우
+            elif d > 2.0 and sCode not in self.jango_dict: #등락율
+                print("%s %s" % ("신규매수를 한다", sCode))
+
+            not_meme_list = list(self.not_account_stock_dict) # 새로운 주소 copy
+            
+            # 업데이트된 데이터가 늘어나면 에러나기 때문에 복사해서 사용
+            for order_num in not_meme_list:
+                code = self.not_account_stock_dict[order_num]["종목코드"]
+                meme_price = self.not_account_stock_dict[order_num]["주문가격"]
+                not_quantity = self.not_account_stock_dict[order_num]["미체결수량"]
+                meme_gubun = self.not_account_stock_dict[order_num]["매도수구분"]
+                
+                # 매수일때, 미체결양이 0보다 크고, 현재가가 주문 넣은 것보다 커지면 취소
+                if meme_gubun == "매수" and not_quantity > 0 and e > meme_price: # e=현재가
+                    print("%s %s" % ("매수 취소한다", sCode))
+                    
+                # 미체결이 0일 경우
+                elif not_quantity == 0:
+                    del self.not_account_stock_dict[order_num]  # 모두 매수에 성공했을경우 리스트에서 삭제
+
+
+
+
+
+
+
+
+
+
+
+
+
+
