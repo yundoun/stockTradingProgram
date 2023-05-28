@@ -667,7 +667,7 @@ class Kiwoom(QAxWidget):
 
                 asd = self.account_stock_dict[sCode]
 
-                # 등락율 ?
+                # 매매 비율 선정
                 meme_rate = (b-asd['매입가']) / asd['매입가'] * 100
 
                 #          [SendOrder() 함수]
@@ -697,11 +697,41 @@ class Kiwoom(QAxWidget):
 
             # 오늘 산 잔고에 있을 경우
             elif sCode in self.jango_dict.keys():
-                print("%s %s" % ("신규 매도를 한다2", sCode))
+                jd = self.jango_dict[sCode]
+
+                # 매매 비율 선정
+                meme_rate = (b -jd['매입단가']) / jd['매입단가'] * 100
+
+                if jd['주문가능수량'] > 0 and (meme_rate > 5 or meme_rate < -5):
+                    order_success = self.dynamicCall("SendOrder(QString, QString, int, QString, int, int, QString, QString",
+                                     ["신규매도", self.portfolio_stock_dict[sCode]['주문용스크린번호'], self.account_num, 2,
+                                     sCode, jd["주문가능수량"], 0, self.realType.SENDTYPE['거래구분']['시장가'], ""])
+                    if order_success == 0:
+                        print("매도주문 전달 성공")
+                    else:
+                        print("매도주문 전달 실패")
+
+
+
+
 
             # 등락율이 2.0% 이상이고 오늘 산 잔고에 없을 경우
             elif d > 2.0 and sCode not in self.jango_dict: #등락율
                 print("%s %s" % ("신규매수를 한다", sCode))
+
+                # 가지고 있는 돈의 0.1%만 가지고 현재가로 나누면 몫이 나옴, 그 몫만큼 사겠다
+                result = (self.use_money * 0.1) /e
+                quantity = int(result)
+
+                # e = 지정가
+                order_success = self.dynamicCall("SendOrder(QString, QString, QString, int, QString, int, int, QString, QString)",
+                                                 ["신규매수", self.portfolio_stock_dict[sCode]["주문용스크린번호"], self.account_num,
+                                                  1, sCode, quantity, e, self.realType.REALTYPE['거래구분']['지정가'],""])
+                if order_success == 0:
+                    print("매도주문 전달 성공")
+                else:
+                    print("매도주문 전달 실패")
+
 
             not_meme_list = list(self.not_account_stock_dict) # 새로운 주소 copy
             
@@ -715,8 +745,16 @@ class Kiwoom(QAxWidget):
                 
                 # 매수일때, 미체결양이 0보다 크고, 현재가가 주문 넣은 것보다 커지면 취소
                 if order_gubun == "매수" and not_quantity > 0 and e > meme_price: # e=현재가
-                    print("%s %s" % ("매수 취소한다", sCode))
+                    order_success = self.dynamicCall(
+                        "SendOrder(QString, QString, QString, int, QString, int, int, QString, QString)",
+                        ["매수취소", self.portfolio_stock_dict[sCode]["주문용스크린번호"], self.account_num,
+                         3, code, 0, 0, self.realType.REALTYPE['거래구분']['지정가'], order_num])
+                    if order_success == 0:
+                        print("매도주문 전달 성공")
+                    else:
+                        print("매도주문 전달 실패")
                     
+
                 # 미체결이 0일 경우
                 elif not_quantity == 0:
                     del self.not_account_stock_dict[order_num]  # 모두 매수에 성공했을경우 리스트에서 삭제
