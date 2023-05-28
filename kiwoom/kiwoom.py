@@ -606,7 +606,7 @@ class Kiwoom(QAxWidget):
             elif value == "2":
                 print("장 종료, 동시 호가로 넘어감")
             elif value == "4":
-                print("장이 종료 되었습니다.")
+                print("3시 30분 장이 종료 되었습니다.")
 
                 for code in self.portfolio_stock_dict.key():
                     self.dynamicCall("SetRealRemove(String, String)", self.portfolio_stock_dict[code]['스크린번호'],code)
@@ -614,9 +614,15 @@ class Kiwoom(QAxWidget):
                 QTest.qWait(5000)
 
                 self.file_delete() # 장 끝났으니 이전 데이터로 선정된 종목 파일 삭제
-                self.calculator_fnc()
+                self.calculator_fnc() # 종목 다시 분석 시작
 
-                sys.exit()
+                sys.exit() # 라이브러리 종료
+
+
+
+
+
+
 
         elif sRealType == "주식체결":
             print(sCode)
