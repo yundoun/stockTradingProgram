@@ -1,5 +1,6 @@
 # 키움 증권
 import os
+import sys
 
 from PyQt5.QAxContainer import *
 from PyQt5.QtCore import *
@@ -81,9 +82,8 @@ class Kiwoom(QAxWidget):
 
     def event_slots(self):        # 이벤트 모아두는 slot
         self.OnEventConnect.connect(self.login_slot)
-        self.OnReceiveTrData.connect(self.trData_slot)
-        # TR요청을 받는 slot
-
+        self.OnReceiveTrData.connect(self.trData_slot) # TR요청을 받는 slot
+        self.OnReceiveMsg.connect(self.msg_slot) # 송수신 메세지 get
 
     def real_event_slots(self):
         self.OnReceiveRealData.connect(self.realdata_slot)
@@ -607,6 +607,17 @@ class Kiwoom(QAxWidget):
                 print("장 종료, 동시 호가로 넘어감")
             elif value == "4":
                 print("장이 종료 되었습니다.")
+
+                for code in self.portfolio_stock_dict.key():
+                    self.dynamicCall("SetRealRemove(String, String)", self.portfolio_stock_dict[code]['스크린번호'],code)
+
+                QTest.qWait(5000)
+
+                self.file_delete() # 장 끝났으니 이전 데이터로 선정된 종목 파일 삭제
+                self.calculator_fnc()
+
+                sys.exit()
+
         elif sRealType == "주식체결":
             print(sCode)
 
@@ -753,7 +764,7 @@ class Kiwoom(QAxWidget):
                         print("매도주문 전달 성공")
                     else:
                         print("매도주문 전달 실패")
-                    
+
 
                 # 미체결이 0일 경우
                 elif not_quantity == 0:
@@ -890,6 +901,12 @@ class Kiwoom(QAxWidget):
                 del self.jango_dict[sCode]
                 self.dynamicCall("SetRealRemove(QString, QString)", self.portfolio_stock_dict[sCode]['스크린번호'], sCode)
 
+    # 송수신 메세지 get
+    def msg_slot(self, sScrNo, sRQName, sTrCode, msg):
+        print("스크린 : %s, 요청이름 : %s, tr코드 : %s --- %s" % (sScrNo, sRQName, sTrCode, msg))
 
 
-
+    # 종목 선정 txt 파일 삭제 함수
+    def file_delete(self):
+        if os.path.infile("files/condition_stock.txt"):
+            os.remove("files/condition_stock.txt")
