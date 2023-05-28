@@ -87,7 +87,7 @@ class Kiwoom(QAxWidget):
 
     def real_event_slots(self):
         self.OnReceiveRealData.connect(self.realdata_slot)
-
+        self.OnReceiveChejanData.connect(self.chejan_slot)
 
     def signal_login_commConnect(self):     # 로그인 시도하는 함수
         self.dynamicCall("CommConnect()")    # PyQt5에서 제공하는 함수 / 데이터 전송 하는 역할
@@ -664,7 +664,36 @@ class Kiwoom(QAxWidget):
             # 매수 결정 조건문
             # 계좌잔고평가내역에 있고 (이전에 미리 매수한 종목) and 오늘 산거에서 없어야함
             if sCode in self.account_stock_dict.keys() and sCode not in self.jango_dict.key():
-                print("%s %s" % ("신규 매도를 한다", sCode))
+
+                asd = self.account_stock_dict[sCode]
+
+                # 등락율 ?
+                meme_rate = (b-asd['매입가']) / asd['매입가'] * 100
+
+                #          [SendOrder() 함수]
+                #          SendOrder(
+                #           BSTR sRQName, // 사용자 구분명
+                #           BSTR sScreenNo, // 화면번호
+                #           BSTR sAccNo,  // 계좌번호 10자리
+                #           LONG nOrderType,  // 주문유형 1:신규매수, 2:신규매도 3:매수취소, 4:매도취소, 5:매수정정, 6:매도정정
+                #           BSTR sCode, // 종목코드 (6자리)
+                #           LONG nQty,  // 주문수량
+                #           LONG nPrice, // 주문가격     # 주문가격 => 0 : 시장가로 주문
+                #           BSTR sHogaGb,   // 거래구분(혹은 호가구분)은 아래 참고
+                #           BSTR sOrgOrderNo  // 원주문번호. 신규주문에는 공백 입력, 정정/취소시 입력합니다. # 원주문번호 : 최초 주문시 번호
+                #           )
+                if asd['매입가능수량'] > 0 and (meme_rate > 5 or meme_rate < -5):
+                    order_success = self.dynamicCall("SendOrder(QString, QString, int, QString, int, int, QString, QString",
+                                     "신규매도", self.portfolio_stock_dict[sCode]['주문용스크린번호'], self.account_num, 2,
+                                     sCode, asd["매매가능수량"], 0, self.realType.SENDTYPE['거래구분']['시장가'], "")
+                    if order_success == 0:
+                        print("매도주문 전달 성공")
+                        del self.account_stock_dict[sCode]
+
+                    else:
+                        print("매도주문 전달 실패")
+
+
 
             # 오늘 산 잔고에 있을 경우
             elif sCode in self.jango_dict.keys():
@@ -691,10 +720,16 @@ class Kiwoom(QAxWidget):
                 elif not_quantity == 0:
                     del self.not_account_stock_dict[order_num]  # 모두 매수에 성공했을경우 리스트에서 삭제
 
+                # 매수 단계 :
+                # 주문을 넣는다 -> 접수 -> 확인 -> 체결 -> 잔고 (-> 나머지 미체결 체결 -> 잔고)
 
+    # 주문을 요청시, 주문에 대한 데이터 슬롯
+    def chejan_slot(self, sGubun, nItemCnt, sFIdList):
 
-
-
+        if int(sGubun) =="0":
+            print("주문 체결일 데이터가 나옴")
+        elif int(sGubun) == "1":
+            print("잔고에 대한 데이터가 나옴")
 
 
 
